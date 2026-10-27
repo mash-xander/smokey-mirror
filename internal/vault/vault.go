@@ -15,6 +15,7 @@ import (
 
 const Extension = ".smoke"
 const MinPasswordLength = 12
+const scryptWorkFactor = 18
 
 type Credentials struct {
 	Password string
@@ -66,11 +67,14 @@ func (c Credentials) identity(encrypt bool) (age.Identity, age.Recipient, error)
 			return nil, nil, err
 		}
 		r, err := age.NewScryptRecipient(c.Password)
+		if err == nil {
+			r.SetWorkFactor(scryptWorkFactor)
+		}
 		return nil, r, err
 	}
 	id, err := age.NewScryptIdentity(c.Password)
 	if err == nil {
-		id.SetMaxWorkFactor(18)
+		id.SetMaxWorkFactor(scryptWorkFactor)
 	}
 	return id, nil, err
 }
