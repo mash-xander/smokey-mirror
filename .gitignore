@@ -1,0 +1,8 @@
+/dist/
+/build/
+*.exe
+*.test
+coverage.out
+*.smoke
+*.smokey-key
+
