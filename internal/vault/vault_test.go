@@ -270,3 +270,50 @@ func TestDefaultOutput(t *testing.T) {
 		}
 	}
 }
+
+func TestFailedWriteNeverPublishes(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "result")
+	want := errors.New("simulated full disk")
+	err := atomicWrite(target, func(f *os.File) error {
+		if _, err := f.Write([]byte("partial plaintext")); err != nil {
+			t.Fatal(err)
+		}
+		return want
+	})
+	if !errors.Is(err, want) {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(target); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("partial file published")
+	}
+	noTemps(t, dir)
+}
+
+func TestInputModificationDetected(t *testing.T) {
+	dir, creds := fixture(t)
+	input := filepath.Join(dir, "input")
+	put(t, input, bytes.Repeat([]byte("payload"), 100000))
+	changed := false
+	_, err := Transform(context.Background(), Request{Input: input, Credentials: creds, Progress: func(done, total int64) {
+		if changed {
+			return
+		}
+		changed = true
+		f, err := os.OpenFile(input, os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.Write([]byte("changed")); err != nil {
+			t.Fatal(err)
+		}
+		f.Close()
+	}})
+	if err == nil || !strings.Contains(err.Error(), "input changed") {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(input + Extension); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("changed input published")
+	}
+	noTemps(t, dir)
+}

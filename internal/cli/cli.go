@@ -23,6 +23,7 @@ const Help = `Smokey Mirror — file encryption, without the fuss.
   smokey install                Install for the current Windows user
   smokey uninstall              Remove integration and installed files
   smokey version                Print the version
+  smokey licenses               Show bundled open-source licenses
 
 Options for encrypt/decrypt (before or after FILE):
   -o, --out PATH       Destination; existing files are never replaced

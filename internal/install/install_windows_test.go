@@ -150,3 +150,53 @@ func TestQuotingAndExplorerCommands(t *testing.T) {
 		}
 	}
 }
+
+func TestPathRestorationDetails(t *testing.T) {
+	for _, tc := range []struct {
+		name, before    string
+		absent, changed bool
+	}{
+		{name: "missing", absent: true}, {name: "trailing-separator", before: `C:\Other;`},
+		{name: "concurrent-edit", before: `C:\Other`, changed: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := testConfig(t)
+			if !tc.absent {
+				if err := writeValue(entry{pathKey(c), "Path", tc.before}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := installAt(c, []byte("MZtest"), "0.1.0", false); err != nil {
+				t.Fatal(err)
+			}
+			k, err := registry.OpenKey(registry.CURRENT_USER, pathKey(c), registry.ALL_ACCESS)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer k.Close()
+			if tc.changed {
+				path, _, _ := k.GetStringValue("Path")
+				if err := k.SetStringValue("Path", path+`;C:\AddedLater`); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := cleanupRegistration(c); err != nil {
+				t.Fatal(err)
+			}
+			got, _, err := k.GetStringValue("Path")
+			if tc.absent {
+				if !errors.Is(err, registry.ErrNotExist) {
+					t.Fatal("absent PATH was not restored")
+				}
+				return
+			}
+			want := tc.before
+			if tc.changed {
+				want += `;C:\AddedLater`
+			}
+			if err != nil || got != want {
+				t.Fatalf("got %q want %q: %v", got, want, err)
+			}
+		})
+	}
+}

@@ -9,6 +9,7 @@ import (
 
 	"smokeymirror/internal/cli"
 	"smokeymirror/internal/install"
+	"smokeymirror/internal/notices"
 	"smokeymirror/internal/ui"
 )
 
@@ -29,6 +30,9 @@ func run(ctx context.Context, args []string) error {
 		return ui.Run("", false)
 	}
 	switch args[0] {
+	case "licenses":
+		fmt.Print(notices.Licenses)
+		return nil
 	case "install":
 		if len(args) != 1 {
 			return fmt.Errorf("usage: smokey install")

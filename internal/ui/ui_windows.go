@@ -24,9 +24,9 @@ type window struct {
 	mode, method                          *walk.ComboBox
 	confirmLabel                          *walk.Label
 	showPassword                          *walk.CheckBox
-	status                                *walk.TextLabel
+	status, keyHint                       *walk.TextLabel
 	progress                              *walk.ProgressBar
-	action, cancel, reveal                *walk.PushButton
+	action, cancel, reveal, createKey     *walk.PushButton
 	busy                                  bool
 	stop                                  context.CancelFunc
 	result                                string
@@ -89,12 +89,12 @@ func Run(input string, decrypt bool) error {
 						LineEdit{AssignTo: &w.key, CueBanner: "Select a .smokey-key or age identity file"},
 						PushButton{Text: "Browse…", OnClicked: w.browseKey},
 					}},
-					PushButton{Text: "Create a new key file…", OnClicked: w.generateKey},
-					TextLabel{Text: "Keep a backup of your key, separate from your encrypted files. Anyone with it can decrypt them.", TextColor: muted, MinSize: Size{Width: 100}},
+					PushButton{AssignTo: &w.createKey, Text: "Create a new key file…", OnClicked: w.generateKey},
+					TextLabel{AssignTo: &w.keyHint, Text: "Keep a backup of your key, separate from your encrypted files. Anyone with it can decrypt them.", TextColor: muted, MinSize: Size{Width: 100}},
 				}},
 				Label{Text: "3   Save the result", Font: Font{Bold: true}},
 				Composite{Layout: HBox{MarginsZero: true}, Children: []Widget{
-					LineEdit{AssignTo: &w.output, CueBanner: "A new file, next to the original"},
+					LineEdit{AssignTo: &w.output, CueBanner: "A new file, next to the original", OnTextChanged: w.resetResult},
 					PushButton{Text: "Save as…", OnClicked: w.browseOutput},
 				}},
 				Label{Text: "Your original stays untouched. Existing files are never replaced.", TextColor: muted},
@@ -148,16 +148,20 @@ func (w *window) updateMode() {
 		return
 	}
 	decrypt := w.mode.CurrentIndex() == 1
+	w.createKey.SetVisible(!decrypt)
 	w.confirm.SetVisible(!decrypt)
 	w.confirmLabel.SetVisible(!decrypt)
 	if decrypt {
 		w.action.SetText("Decrypt file")
+		w.keyHint.SetText("Select the same key file that was used to encrypt this file.")
 	} else {
 		w.action.SetText("Encrypt file")
+		w.keyHint.SetText("Keep a backup of your key, separate from your encrypted files. Anyone with it can decrypt them.")
 	}
 	if w.input.Text() != "" {
 		w.output.SetText(suggestOutput(w.input.Text(), decrypt))
 	}
+	w.resetResult()
 }
 
 func (w *window) updateMethod() {
@@ -171,6 +175,18 @@ func (w *window) updateMethod() {
 		w.password.SetText("")
 		w.confirm.SetText("")
 	}
+	w.resetResult()
+}
+
+func (w *window) resetResult() {
+	if w.reveal == nil || w.busy {
+		return
+	}
+	w.result = ""
+	w.reveal.SetEnabled(false)
+	w.progress.SetValue(0)
+	w.status.SetTextColor(walk.RGB(92, 101, 120))
+	w.status.SetText("Ready when you are.")
 }
 
 func (w *window) chooseInput(path string, detect bool) {
