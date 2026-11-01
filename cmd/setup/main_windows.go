@@ -12,7 +12,7 @@ import (
 //go:embed payload/smokey.exe
 var payload embed.FS
 
-var version = "0.1.0-dev"
+var version = "0.1.1-dev"
 
 func main() {
 	destination, err := install.Destination()

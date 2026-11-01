@@ -19,6 +19,7 @@ import (
 
 type window struct {
 	main                                  *walk.MainWindow
+	logo                                  *walk.ImageView
 	form, passwords, keys                 *walk.Composite
 	input, output, password, confirm, key *walk.LineEdit
 	mode, method                          *walk.ComboBox
@@ -32,17 +33,20 @@ type window struct {
 	result                                string
 }
 
+// IconResourceID follows the manifest in the pinned resource generator.
+const IconResourceID = 2
+
 func DetachConsole() { windows.NewLazySystemDLL("kernel32.dll").NewProc("FreeConsole").Call() }
 
 func Run(input string, decrypt bool) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	w := &window{}
-	muted := walk.RGB(92, 101, 120)
-	accent := walk.RGB(74, 67, 168)
+	muted := mutedColor
+	accent := goldColor
 	err := (MainWindow{
 		AssignTo: &w.main, Title: "Smokey Mirror", Size: Size{Width: 720, Height: 720}, MinSize: Size{Width: 650, Height: 680},
-		Font: Font{Family: "Segoe UI", PointSize: 10}, Background: SolidColorBrush{Color: walk.RGB(249, 250, 253)},
+		Font: Font{Family: "Segoe UI", PointSize: 10}, Background: SolidColorBrush{Color: backgroundColor},
 		Layout: VBox{Margins: Margins{Left: 28, Top: 24, Right: 28, Bottom: 24}, Spacing: 16},
 		OnDropFiles: func(paths []string) {
 			if w.busy {
@@ -55,15 +59,18 @@ func Run(input string, decrypt bool) error {
 			w.chooseInput(paths[0], true)
 		},
 		Children: []Widget{
-			Label{Text: "SM  /  FILE PRIVACY", Font: Font{PointSize: 9, Bold: true}, TextColor: accent},
-			Label{Text: "Smokey Mirror", Font: Font{PointSize: 28, Bold: true}, TextColor: walk.RGB(29, 34, 51)},
+			Label{Text: "FILE PRIVACY", Font: Font{PointSize: 9, Bold: true}, TextColor: accent},
+			Composite{Layout: HBox{MarginsZero: true}, Children: []Widget{
+				Label{Text: "Smokey Mirror", Font: Font{PointSize: 28, Bold: true}, TextColor: textColor, StretchFactor: 1},
+				ImageView{AssignTo: &w.logo, MinSize: Size{Width: 48, Height: 48}, MaxSize: Size{Width: 48, Height: 48}, Mode: ImageViewModeZoom},
+			}},
 			Label{Text: "Your files. A little more private.", TextColor: muted},
 			Composite{AssignTo: &w.form, Layout: VBox{MarginsZero: true, Spacing: 12}, Children: []Widget{
 				Composite{Layout: HBox{MarginsZero: true, Spacing: 12}, Children: []Widget{
 					ComboBox{AssignTo: &w.mode, Model: []string{"Encrypt a file", "Decrypt a file"}, CurrentIndex: 0, OnCurrentIndexChanged: w.updateMode},
 					ComboBox{AssignTo: &w.method, Model: []string{"Passphrase", "Key file"}, CurrentIndex: 0, OnCurrentIndexChanged: w.updateMethod},
 				}},
-				Label{Text: "1   Choose a file", Font: Font{Bold: true}},
+				Label{Text: "1   Choose a file", Font: Font{Bold: true}, TextColor: textColor},
 				Composite{Layout: HBox{MarginsZero: true}, Children: []Widget{
 					LineEdit{AssignTo: &w.input, CueBanner: "Browse, paste a path, or drop a file here", OnTextChanged: func() {
 						if w.output != nil && w.mode != nil {
@@ -72,16 +79,19 @@ func Run(input string, decrypt bool) error {
 					}},
 					PushButton{Text: "Browse…", OnClicked: w.browseInput},
 				}},
-				Label{Text: "2   Choose your protection", Font: Font{Bold: true}},
+				Label{Text: "2   Choose your protection", Font: Font{Bold: true}, TextColor: textColor},
 				Composite{AssignTo: &w.passwords, Layout: VBox{MarginsZero: true, Spacing: 8}, Children: []Widget{
 					LineEdit{AssignTo: &w.password, PasswordMode: true, CueBanner: "Passphrase · at least 12 characters", MaxLength: 1024},
 					Label{AssignTo: &w.confirmLabel, Text: "Confirm passphrase", TextColor: muted},
 					LineEdit{AssignTo: &w.confirm, PasswordMode: true, CueBanner: "Type the same passphrase again", MaxLength: 1024},
-					CheckBox{AssignTo: &w.showPassword, Text: "Show passphrase", OnCheckedChanged: func() {
-						if w.password != nil && w.confirm != nil {
-							w.password.SetPasswordMode(!w.showPassword.Checked())
-							w.confirm.SetPasswordMode(!w.showPassword.Checked())
-						}
+					Composite{Layout: HBox{MarginsZero: true}, Children: []Widget{
+						CheckBox{AssignTo: &w.showPassword, Text: "Show passphrase", MinSize: Size{Width: 180}, MaxSize: Size{Width: 180}, OnCheckedChanged: func() {
+							if w.password != nil && w.confirm != nil {
+								w.password.SetPasswordMode(!w.showPassword.Checked())
+								w.confirm.SetPasswordMode(!w.showPassword.Checked())
+							}
+						}},
+						HSpacer{},
 					}},
 				}},
 				Composite{AssignTo: &w.keys, Visible: false, Layout: VBox{MarginsZero: true, Spacing: 8}, Children: []Widget{
@@ -92,7 +102,7 @@ func Run(input string, decrypt bool) error {
 					PushButton{AssignTo: &w.createKey, Text: "Create a new key file…", OnClicked: w.generateKey},
 					TextLabel{AssignTo: &w.keyHint, Text: "Keep a backup of your key, separate from your encrypted files. Anyone with it can decrypt them.", TextColor: muted, MinSize: Size{Width: 100}},
 				}},
-				Label{Text: "3   Save the result", Font: Font{Bold: true}},
+				Label{Text: "3   Save the result", Font: Font{Bold: true}, TextColor: textColor},
 				Composite{Layout: HBox{MarginsZero: true}, Children: []Widget{
 					LineEdit{AssignTo: &w.output, CueBanner: "A new file, next to the original", OnTextChanged: w.resetResult},
 					PushButton{Text: "Save as…", OnClicked: w.browseOutput},
@@ -100,7 +110,7 @@ func Run(input string, decrypt bool) error {
 				Label{Text: "Your original stays untouched. Existing files are never replaced.", TextColor: muted},
 			}},
 			VSpacer{},
-			ProgressBar{AssignTo: &w.progress, MinValue: 0, MaxValue: 100},
+			ProgressBar{AssignTo: &w.progress, MinValue: 0, MaxValue: 100, MinSize: Size{Height: 6}, MaxSize: Size{Height: 6}},
 			TextLabel{AssignTo: &w.status, Text: "Ready when you are.", TextColor: muted, MinSize: Size{Width: 100, Height: 42}, NoPrefix: true},
 			Composite{Layout: HBox{MarginsZero: true, Spacing: 10}, Children: []Widget{
 				PushButton{AssignTo: &w.reveal, Text: "Show result", Enabled: false, OnClicked: w.showResult},
@@ -119,10 +129,20 @@ func Run(input string, decrypt bool) error {
 	if err != nil {
 		return err
 	}
+	theme, err := applyDarkTheme(w)
+	if err != nil {
+		w.main.Dispose()
+		return err
+	}
+	defer theme.dispose()
 	defer w.main.Dispose()
-	if icon, err := walk.NewIconFromResourceId(1); err == nil {
+	if icon, err := walk.NewIconFromResourceId(IconResourceID); err == nil {
 		defer icon.Dispose()
 		w.main.SetIcon(icon)
+	}
+	if logo, err := walk.NewIconFromResourceIdWithSize(IconResourceID, walk.Size{Width: 64, Height: 64}); err == nil {
+		defer logo.Dispose()
+		w.logo.SetImage(logo)
 	}
 	w.main.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
 		if w.busy {
@@ -185,7 +205,7 @@ func (w *window) resetResult() {
 	w.result = ""
 	w.reveal.SetEnabled(false)
 	w.progress.SetValue(0)
-	w.status.SetTextColor(walk.RGB(92, 101, 120))
+	w.status.SetTextColor(mutedColor)
 	w.status.SetText("Ready when you are.")
 }
 
@@ -252,8 +272,20 @@ func (w *window) generateKey() {
 }
 
 func (w *window) fail(err error) {
-	w.status.SetTextColor(walk.RGB(169, 43, 52))
+	w.status.SetTextColor(errorColor)
 	w.status.SetText(err.Error())
+}
+
+func setInputsEnabled(container walk.Container, enabled bool) {
+	for i := 0; i < container.Children().Len(); i++ {
+		child := container.Children().At(i)
+		switch c := child.(type) {
+		case *walk.LineEdit, *walk.ComboBox, *walk.CheckBox, *walk.PushButton:
+			child.SetEnabled(enabled)
+		case walk.Container:
+			setInputsEnabled(c, enabled)
+		}
+	}
 }
 
 func (w *window) start() {
@@ -272,13 +304,13 @@ func (w *window) start() {
 	}
 	w.busy = true
 	w.result = ""
-	w.form.SetEnabled(false)
+	setInputsEnabled(w.form, false)
 	w.action.SetEnabled(false)
 	w.cancel.SetEnabled(true)
 	w.reveal.SetEnabled(false)
 	w.progress.SetValue(0)
 	w.progress.SetMarqueeMode(true)
-	w.status.SetTextColor(walk.RGB(92, 101, 120))
+	w.status.SetTextColor(mutedColor)
 	w.status.SetText("Preparing protection…")
 	ctx, cancel := context.WithCancel(context.Background())
 	w.stop = cancel
@@ -307,7 +339,7 @@ func (w *window) start() {
 		w.main.Synchronize(func() {
 			w.busy = false
 			w.stop = nil
-			w.form.SetEnabled(true)
+			setInputsEnabled(w.form, true)
 			w.action.SetEnabled(true)
 			w.cancel.SetEnabled(false)
 			w.progress.SetMarqueeMode(false)
@@ -326,7 +358,7 @@ func (w *window) start() {
 			w.progress.SetValue(100)
 			w.result = result
 			w.reveal.SetEnabled(true)
-			w.status.SetTextColor(walk.RGB(33, 119, 91))
+			w.status.SetTextColor(turquoiseColor)
 			w.status.SetText("Done. Saved " + filepath.Base(result))
 		})
 	}()

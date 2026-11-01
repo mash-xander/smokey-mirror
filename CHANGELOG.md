@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 — 2026-11-01
+
+- Replace the application icon with the owner's artwork, including multiple Windows icon sizes.
+- Add a dark palette with turquoise primary actions, gold key creation, and visible keyboard focus.
+- Preserve native control behavior and the existing file encryption workflow.
+- Keep `docs/` and `dist/` local and excluded from Git tracking.
+
 ## 0.1.0 — 2026-10-27
 
 - Native Windows GUI with drag and drop, progress, cancellation, and safe output names.

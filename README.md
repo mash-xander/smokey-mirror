@@ -8,11 +8,11 @@ A small Windows file encryption utility written in Go. Choose a file, choose a
 passphrase or key file, and save an encrypted copy. No account, cloud service,
 background process, or browser runtime.
 
-[Русская инструкция](docs/README.ru.md) · [Security model](SECURITY.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md)
+[Security model](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 ## What it does
 
-- Native desktop window, drag and drop, progress, cancellation, and a result shortcut.
+- Native dark desktop window, drag and drop, progress, cancellation, and a result shortcut.
 - Hidden passphrase prompts in PowerShell and cmd, or a reusable generated key file.
 - Explorer **Encrypt with Smokey Mirror** and **Decrypt with Smokey Mirror** actions.
 - Streaming encryption for large files. Originals are always kept.
@@ -101,8 +101,10 @@ go vet ./...
 ```
 
 Outputs: `dist/smokey.exe`, `dist/SmokeyMirror-Setup.exe`, `dist/SHA256SUMS.txt`,
-and `dist/build-info.txt`. Run `scripts/build.ps1 -Resources` after editing the
-icon generator or manifest. Windows resource objects are committed so ordinary
+and `dist/build-info.txt`. Run `scripts/build.ps1 -Resources` after replacing
+`assets/icon.png` or editing the icon converter or manifest. The converter keeps
+the source PNG unchanged and creates a multi-size Windows icon. Windows resource
+objects are committed so ordinary
 builds need no resource generator. The setup payload is generated and ignored
 by Git; the setup package uses the `installer` build tag.
 
@@ -126,10 +128,11 @@ the original PATH. Run it only when intentionally testing Windows integration.
 One regular file per operation. Archive folders first. Labels and batch
 decryption are planned separately, with the same encryption engine and an
 explicit user-selected set of files. This version does not scan or index your
-disk. See the [roadmap](docs/ROADMAP.md).
+disk. Design notes and the roadmap live in the local, Git-ignored `docs/` folder.
+The `dist/` folder is also ignored; neither directory belongs to the source tree
+published to GitHub.
 
 MIT licensed. Dependencies retain their own licenses; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 The same license texts are embedded in the portable executable and available
-with `smokey licenses`. See [validation notes](docs/VALIDATION.md) for the checks
-performed on the initial release.
+with `smokey licenses`.
